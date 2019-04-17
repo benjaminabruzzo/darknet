@@ -15,5 +15,5 @@ WTS="/home/benjamin/ros/src/usma_threat_ros/yolo/pistol-tiny_last.weights"
 # CFG="/home/benjamin/darknet/pistol-yolov3-tiny.cfg"
 
 
-# ./darknet detector test $DATA $CFG $WTS $IMG
-./darknet detect $CFG $WTS $IMG
+./darknet detector test $DATA $CFG $WTS $IMG
+# ./darknet detect $CFG $WTS $IMG

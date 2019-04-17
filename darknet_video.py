@@ -55,8 +55,7 @@ def YOLO():
         raise ValueError("Invalid data file path `" +
                          os.path.abspath(metaPath)+"`")
     if netMain is None:
-        netMain = darknet.load_net_custom(configPath.encode(
-            "ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
+        netMain = darknet.load_net_custom(configPath.encode("ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
     if metaMain is None:
         metaMain = darknet.load_meta(metaPath.encode("ascii"))
     if altNames is None:

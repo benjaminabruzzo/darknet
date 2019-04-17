@@ -32,6 +32,7 @@ import math
 import random
 import os
 import yaml
+import cv2
 
 def sample(probs):
     s = sum(probs)
@@ -386,58 +387,7 @@ def performDetect(imagePath="data/dog.jpg", thresh= 0.25, configPath = "./cfg/yo
     # Do the detection
     #detections = detect(netMain, metaMain, imagePath, thresh)	# if is used cv2.imread(image)
     detections = detect(netMain, metaMain, imagePath.encode("ascii"), thresh)
-    # if showImage:
-    #     try:
-    #         from skimage import io, draw
-    #         import numpy as np
-    #         image = io.imread(imagePath)
-    #         print("*** "+str(len(detections))+" Results, color coded by confidence ***")
-    #         imcaption = []
-    #         for detection in detections:
-    #             label = detection[0]
-    #             confidence = detection[1]
-    #             pstring = label+": "+str(np.rint(100 * confidence))+"%"
-    #             imcaption.append(pstring)
-    #             print(pstring)
-    #             bounds = detection[2]
-    #             shape = image.shape
-    #             # x = shape[1]
-    #             # xExtent = int(x * bounds[2] / 100)
-    #             # y = shape[0]
-    #             # yExtent = int(y * bounds[3] / 100)
-    #             yExtent = int(bounds[3])
-    #             xEntent = int(bounds[2])
-    #             # Coordinates are around the center
-    #             xCoord = int(bounds[0] - bounds[2]/2)
-    #             yCoord = int(bounds[1] - bounds[3]/2)
-    #             boundingBox = [
-    #                 [xCoord, yCoord],
-    #                 [xCoord, yCoord + yExtent],
-    #                 [xCoord + xEntent, yCoord + yExtent],
-    #                 [xCoord + xEntent, yCoord]
-    #             ]
-    #             # Wiggle it around to make a 3px border
-    #             rr, cc = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
-    #             rr2, cc2 = draw.polygon_perimeter([x[1] + 1 for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
-    #             rr3, cc3 = draw.polygon_perimeter([x[1] - 1 for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
-    #             rr4, cc4 = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] + 1 for x in boundingBox], shape= shape)
-    #             rr5, cc5 = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] - 1 for x in boundingBox], shape= shape)
-    #             boxColor = (int(255 * (1 - (confidence ** 2))), int(255 * (confidence ** 2)), 0)
-    #             draw.set_color(image, (rr, cc), boxColor, alpha= 0.8)
-    #             draw.set_color(image, (rr2, cc2), boxColor, alpha= 0.8)
-    #             draw.set_color(image, (rr3, cc3), boxColor, alpha= 0.8)
-    #             draw.set_color(image, (rr4, cc4), boxColor, alpha= 0.8)
-    #             draw.set_color(image, (rr5, cc5), boxColor, alpha= 0.8)
-    #         if not makeImageOnly:
-    #             io.imshow(image)
-    #             io.show()
-    #         detections = {
-    #             "detections": detections,
-    #             "image": image,
-    #             "caption": "\n<br/>".join(imcaption)
-    #         }
-    #     except Exception as e:
-    #         print("Unable to show image: "+str(e))
+
     return detections
 
 if __name__ == "__main__":
@@ -451,7 +401,28 @@ if __name__ == "__main__":
     makeImageOnly = False
     initOnly= False
 
-    detections = performDetect(imagePath, thresh, configPath, weightPath, metaPath, showImage, makeImageOnly, initOnly)
+    # detections = performDetect(imagePath, thresh, configPath, weightPath, metaPath, showImage, makeImageOnly, initOnly)
+
+    # for detection in detections:
+    #     print("detection: {}").format(detection)
+
+
+    imagePath="/home/benjamin/datasets/Aggressiveness/Low_ordered/images/low_aggressive_000003.jpg"
+    frame_rgb = cv2.imread(imagePath,cv2.IMREAD_COLOR) #load image in cv2
+    # frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
+    metaMain = load_meta(metaPath.encode("ascii"))
+    netMain = load_net_custom(configPath.encode("ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
+    # netMain = darknet.load_net_custom(configPath.encode("ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
+    frame_resized = cv2.resize(frame_rgb,(network_width(netMain), network_height(netMain)), interpolation=cv2.INTER_LINEAR)
+    # frame_resized = cv2.resize(frame_rgb,(darknet.network_width(netMain),darknet.network_height(netMain)),interpolation=cv2.INTER_LINEAR)
+    darknet_image = make_image(network_width(netMain),network_height(netMain),3)
+    # darknet_image = darknet.make_image(darknet.network_width(netMain),darknet.network_height(netMain),3)
+
+    copy_image_from_bytes(darknet_image,frame_resized.tobytes())
+    # darknet.copy_image_from_bytes(darknet_image,frame_resized.tobytes())
+    detections = detect_image(netMain, metaMain, darknet_image, thresh=0.25)
+    # detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
 
     for detection in detections:
         print("detection: {}").format(detection)
+
