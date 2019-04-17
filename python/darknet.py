@@ -31,7 +31,6 @@ from ctypes import *
 import math
 import random
 import os
-import yaml
 
 def sample(probs):
     s = sum(probs)
@@ -78,50 +77,49 @@ class METADATA(Structure):
 #lib = CDLL("/home/pjreddie/documents/darknet/libdarknet.so", RTLD_GLOBAL)
 #lib = CDLL("libdarknet.so", RTLD_GLOBAL)
 hasGPU = True
-# if os.name == "nt":
-#     cwd = os.path.dirname(__file__)
-#     os.environ['PATH'] = cwd + ';' + os.environ['PATH']
-#     winGPUdll = os.path.join(cwd, "yolo_cpp_dll.dll")
-#     winNoGPUdll = os.path.join(cwd, "yolo_cpp_dll_nogpu.dll")
-#     envKeys = list()
-#     for k, v in os.environ.items():
-#         envKeys.append(k)
-#     try:
-#         try:
-#             tmp = os.environ["FORCE_CPU"].lower()
-#             if tmp in ["1", "true", "yes", "on"]:
-#                 raise ValueError("ForceCPU")
-#             else:
-#                 print("Flag value '"+tmp+"' not forcing CPU mode")
-#         except KeyError:
-#             # We never set the flag
-#             if 'CUDA_VISIBLE_DEVICES' in envKeys:
-#                 if int(os.environ['CUDA_VISIBLE_DEVICES']) < 0:
-#                     raise ValueError("ForceCPU")
-#             try:
-#                 global DARKNET_FORCE_CPU
-#                 if DARKNET_FORCE_CPU:
-#                     raise ValueError("ForceCPU")
-#             except NameError:
-#                 pass
-#             # print(os.environ.keys())
-#             # print("FORCE_CPU flag undefined, proceeding with GPU")
-#         if not os.path.exists(winGPUdll):
-#             raise ValueError("NoDLL")
-#         lib = CDLL(winGPUdll, RTLD_GLOBAL)
-#     except (KeyError, ValueError):
-#         hasGPU = False
-#         if os.path.exists(winNoGPUdll):
-#             lib = CDLL(winNoGPUdll, RTLD_GLOBAL)
-#             print("Notice: CPU-only mode")
-#         else:
-#             # Try the other way, in case no_gpu was
-#             # compile but not renamed
-#             lib = CDLL(winGPUdll, RTLD_GLOBAL)
-#             print("Environment variables indicated a CPU run, but we didn't find `"+winNoGPUdll+"`. Trying a GPU run anyway.")
-# else:
-#     lib = CDLL("./libdarknet.so", RTLD_GLOBAL)
-lib = CDLL("/home/benjamin/darknet/libdarknet.so", RTLD_GLOBAL)
+if os.name == "nt":
+    cwd = os.path.dirname(__file__)
+    os.environ['PATH'] = cwd + ';' + os.environ['PATH']
+    winGPUdll = os.path.join(cwd, "yolo_cpp_dll.dll")
+    winNoGPUdll = os.path.join(cwd, "yolo_cpp_dll_nogpu.dll")
+    envKeys = list()
+    for k, v in os.environ.items():
+        envKeys.append(k)
+    try:
+        try:
+            tmp = os.environ["FORCE_CPU"].lower()
+            if tmp in ["1", "true", "yes", "on"]:
+                raise ValueError("ForceCPU")
+            else:
+                print("Flag value '"+tmp+"' not forcing CPU mode")
+        except KeyError:
+            # We never set the flag
+            if 'CUDA_VISIBLE_DEVICES' in envKeys:
+                if int(os.environ['CUDA_VISIBLE_DEVICES']) < 0:
+                    raise ValueError("ForceCPU")
+            try:
+                global DARKNET_FORCE_CPU
+                if DARKNET_FORCE_CPU:
+                    raise ValueError("ForceCPU")
+            except NameError:
+                pass
+            # print(os.environ.keys())
+            # print("FORCE_CPU flag undefined, proceeding with GPU")
+        if not os.path.exists(winGPUdll):
+            raise ValueError("NoDLL")
+        lib = CDLL(winGPUdll, RTLD_GLOBAL)
+    except (KeyError, ValueError):
+        hasGPU = False
+        if os.path.exists(winNoGPUdll):
+            lib = CDLL(winNoGPUdll, RTLD_GLOBAL)
+            print("Notice: CPU-only mode")
+        else:
+            # Try the other way, in case no_gpu was
+            # compile but not renamed
+            lib = CDLL(winGPUdll, RTLD_GLOBAL)
+            print("Environment variables indicated a CPU run, but we didn't find `"+winNoGPUdll+"`. Trying a GPU run anyway.")
+else:
+    lib = CDLL("/home/benjamin/darknet/libdarknet.so", RTLD_GLOBAL)
 lib.network_width.argtypes = [c_void_p]
 lib.network_width.restype = c_int
 lib.network_height.argtypes = [c_void_p]
@@ -343,16 +341,12 @@ def performDetect(imagePath="data/dog.jpg", thresh= 0.25, configPath = "./cfg/yo
     # Import the global variables. This lets us instance Darknet once, then just call performDetect() again without instancing again
     global metaMain, netMain, altNames #pylint: disable=W0603
     assert 0 < thresh < 1, "Threshold should be a float between zero and one (non-inclusive)"
-    # print("configPath: {}").format(configPath)
     if not os.path.exists(configPath):
         raise ValueError("Invalid config path `"+os.path.abspath(configPath)+"`")
-    # print("weightPath: {}").format(weightPath)
     if not os.path.exists(weightPath):
         raise ValueError("Invalid weight path `"+os.path.abspath(weightPath)+"`")
-    # print("metaPath: {}").format(metaPath)
     if not os.path.exists(metaPath):
         raise ValueError("Invalid data file path `"+os.path.abspath(metaPath)+"`")
-    
     if netMain is None:
         netMain = load_net_custom(configPath.encode("ascii"), weightPath.encode("ascii"), 0, 1)  # batch size = 1
     if metaMain is None:
@@ -386,72 +380,59 @@ def performDetect(imagePath="data/dog.jpg", thresh= 0.25, configPath = "./cfg/yo
     # Do the detection
     #detections = detect(netMain, metaMain, imagePath, thresh)	# if is used cv2.imread(image)
     detections = detect(netMain, metaMain, imagePath.encode("ascii"), thresh)
-    # if showImage:
-    #     try:
-    #         from skimage import io, draw
-    #         import numpy as np
-    #         image = io.imread(imagePath)
-    #         print("*** "+str(len(detections))+" Results, color coded by confidence ***")
-    #         imcaption = []
-    #         for detection in detections:
-    #             label = detection[0]
-    #             confidence = detection[1]
-    #             pstring = label+": "+str(np.rint(100 * confidence))+"%"
-    #             imcaption.append(pstring)
-    #             print(pstring)
-    #             bounds = detection[2]
-    #             shape = image.shape
-    #             # x = shape[1]
-    #             # xExtent = int(x * bounds[2] / 100)
-    #             # y = shape[0]
-    #             # yExtent = int(y * bounds[3] / 100)
-    #             yExtent = int(bounds[3])
-    #             xEntent = int(bounds[2])
-    #             # Coordinates are around the center
-    #             xCoord = int(bounds[0] - bounds[2]/2)
-    #             yCoord = int(bounds[1] - bounds[3]/2)
-    #             boundingBox = [
-    #                 [xCoord, yCoord],
-    #                 [xCoord, yCoord + yExtent],
-    #                 [xCoord + xEntent, yCoord + yExtent],
-    #                 [xCoord + xEntent, yCoord]
-    #             ]
-    #             # Wiggle it around to make a 3px border
-    #             rr, cc = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
-    #             rr2, cc2 = draw.polygon_perimeter([x[1] + 1 for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
-    #             rr3, cc3 = draw.polygon_perimeter([x[1] - 1 for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
-    #             rr4, cc4 = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] + 1 for x in boundingBox], shape= shape)
-    #             rr5, cc5 = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] - 1 for x in boundingBox], shape= shape)
-    #             boxColor = (int(255 * (1 - (confidence ** 2))), int(255 * (confidence ** 2)), 0)
-    #             draw.set_color(image, (rr, cc), boxColor, alpha= 0.8)
-    #             draw.set_color(image, (rr2, cc2), boxColor, alpha= 0.8)
-    #             draw.set_color(image, (rr3, cc3), boxColor, alpha= 0.8)
-    #             draw.set_color(image, (rr4, cc4), boxColor, alpha= 0.8)
-    #             draw.set_color(image, (rr5, cc5), boxColor, alpha= 0.8)
-    #         if not makeImageOnly:
-    #             io.imshow(image)
-    #             io.show()
-    #         detections = {
-    #             "detections": detections,
-    #             "image": image,
-    #             "caption": "\n<br/>".join(imcaption)
-    #         }
-    #     except Exception as e:
-    #         print("Unable to show image: "+str(e))
+    if showImage:
+        try:
+            from skimage import io, draw
+            import numpy as np
+            image = io.imread(imagePath)
+            print("*** "+str(len(detections))+" Results, color coded by confidence ***")
+            imcaption = []
+            for detection in detections:
+                label = detection[0]
+                confidence = detection[1]
+                pstring = label+": "+str(np.rint(100 * confidence))+"%"
+                imcaption.append(pstring)
+                print(pstring)
+                bounds = detection[2]
+                shape = image.shape
+                # x = shape[1]
+                # xExtent = int(x * bounds[2] / 100)
+                # y = shape[0]
+                # yExtent = int(y * bounds[3] / 100)
+                yExtent = int(bounds[3])
+                xEntent = int(bounds[2])
+                # Coordinates are around the center
+                xCoord = int(bounds[0] - bounds[2]/2)
+                yCoord = int(bounds[1] - bounds[3]/2)
+                boundingBox = [
+                    [xCoord, yCoord],
+                    [xCoord, yCoord + yExtent],
+                    [xCoord + xEntent, yCoord + yExtent],
+                    [xCoord + xEntent, yCoord]
+                ]
+                # Wiggle it around to make a 3px border
+                rr, cc = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
+                rr2, cc2 = draw.polygon_perimeter([x[1] + 1 for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
+                rr3, cc3 = draw.polygon_perimeter([x[1] - 1 for x in boundingBox], [x[0] for x in boundingBox], shape= shape)
+                rr4, cc4 = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] + 1 for x in boundingBox], shape= shape)
+                rr5, cc5 = draw.polygon_perimeter([x[1] for x in boundingBox], [x[0] - 1 for x in boundingBox], shape= shape)
+                boxColor = (int(255 * (1 - (confidence ** 2))), int(255 * (confidence ** 2)), 0)
+                draw.set_color(image, (rr, cc), boxColor, alpha= 0.8)
+                draw.set_color(image, (rr2, cc2), boxColor, alpha= 0.8)
+                draw.set_color(image, (rr3, cc3), boxColor, alpha= 0.8)
+                draw.set_color(image, (rr4, cc4), boxColor, alpha= 0.8)
+                draw.set_color(image, (rr5, cc5), boxColor, alpha= 0.8)
+            if not makeImageOnly:
+                io.imshow(image)
+                io.show()
+            detections = {
+                "detections": detections,
+                "image": image,
+                "caption": "\n<br/>".join(imcaption)
+            }
+        except Exception as e:
+            print("Unable to show image: "+str(e))
     return detections
 
 if __name__ == "__main__":
-    imagePath="/home/benjamin/datasets/Aggressiveness/Low_ordered/images/low_aggressive_000003.jpg"
-    configPath = "/home/benjamin/ros/src/usma_threat_ros/yolo/pistol-tiny.cfg"
-    weightPath = "/home/benjamin/ros/src/usma_threat_ros/yolo/pistol-tiny_last.weights"
-    metaPath= "/home/benjamin/ros/src/usma_threat_ros/yolo/pistol.data"
-
-    thresh= 0.25
-    showImage= False
-    makeImageOnly = False
-    initOnly= False
-
-    detections = performDetect(imagePath, thresh, configPath, weightPath, metaPath, showImage, makeImageOnly, initOnly)
-
-    for detection in detections:
-        print("detection: {}").format(detection)
+    print(performDetect())
